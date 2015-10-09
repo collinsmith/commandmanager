@@ -1,0 +1,3 @@
+[submodule "src/include/commandmanager-inc"]
+	path = src/include/commandmanager-inc
+	url = https://github.com/collinsmith/commandmanager-inc.git
