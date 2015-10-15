@@ -763,17 +763,19 @@ public printCommands(id) {
     console_print(id, "Commands:");
 
     console_print(id,
-            "%3s %64s %8s %8s %16s %s",
+            "%3s %64s %8s %8s %16s %4s %s",
             "ID",
             "DESCRIPTION",
             "FLAGS",
             "ADMIN",
             "PLUGIN",
-            "FUNCTION");
+            "FUNC",
+            "ALIASES");
 
     new flags[16];
     new adminFlags[16];
     new filename[64];
+    new aliases[256];
     for (new i = 1; i <= g_numCommands; i++) {
         loadCommand(i);
         getCustomFlags(
@@ -788,22 +790,63 @@ public printCommands(id) {
                 g_tempCommand[command_PluginID],
                 .filename = filename,
                 .len1 = charsmax(filename));
+        outputCommandAliases(i, aliases, charsmax(aliases));
         console_print(id,
-                "%2d. %64.64s %8.8s %8.8s %16.16s %d",
+                "%2d. %64.64s %8.8s %8.8s %16.16s %4d %s",
                 i,
                 g_tempCommand[command_Desc],
                 flags,
                 adminFlags,
                 filename,
-                g_tempCommand[command_FuncID]);
+                g_tempCommand[command_FuncID],
+                aliases);
                 
     }
 
     console_print(id, "%d commands created.", g_numCommands);
 }
 
+stock outputCommandAliases(const Command: command, dst[], const len){
+    new copyLen = 0;
+    loadCommand(command);
+    new const Array: array = g_tempCommand[command_Aliases];
+    new const size = ArraySize(array);
+    for (new i = 0; i < size; i++) {
+        loadAlias(ArrayGetCell(array, i));
+        copyLen += format(dst[copyLen], len-copyLen,
+                "%s, ", g_tempAlias[alias_String]);
+    }
+
+    copyLen = max(0, copyLen-2);
+    dst[copyLen] = EOS;
+    LoggerLogDebug(g_Logger,
+            "Command %d aliases = { %s } (size=%d)",
+            command,
+            dst,
+            size);
+    return copyLen;
+}
+
 public printAliases(id) {
-    //...
+    console_print(id, "Aliases:");
+
+    console_print(id,
+            "%3s %32s %s",
+            "ID",
+            "ALIAS",
+            "COMMAND");
+
+    for (new i = 1; i <= g_numAliases; i++) {
+        loadAlias(i);
+        console_print(id,
+                "%2d. %32.32s %d",
+                i,
+                g_tempAlias[alias_String],
+                g_tempAlias[alias_Command]);
+                
+    }
+
+    console_print(id, "%d aliases created.", g_numAliases);
 }
 
 /*******************************************************************************
