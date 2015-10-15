@@ -760,7 +760,46 @@ stock checkFlags(const bits, const Command: command, const alias[]) {
  ******************************************************************************/
 
 public printCommands(id) {
-    //...
+    console_print(id, "Commands:");
+
+    console_print(id,
+            "%3s %64s %8s %8s %16s %s",
+            "ID",
+            "DESCRIPTION",
+            "FLAGS",
+            "ADMIN",
+            "PLUGIN",
+            "FUNCTION");
+
+    new flags[16];
+    new adminFlags[16];
+    new filename[64];
+    for (new i = 1; i <= g_numCommands; i++) {
+        loadCommand(i);
+        getCustomFlags(
+                g_tempCommand[command_Flags],
+                flags, charsmax(flags),
+                g_Logger);
+        get_flags(
+                g_tempCommand[command_AdminFlags],
+                adminFlags,
+                charsmax(adminFlags));
+        get_plugin(
+                g_tempCommand[command_PluginID],
+                .filename = filename,
+                .len1 = charsmax(filename));
+        console_print(id,
+                "%2d. %64.64s %8.8s %8.8s %16.16s %d",
+                i,
+                g_tempCommand[command_Desc],
+                flags,
+                adminFlags,
+                filename,
+                g_tempCommand[command_FuncID]);
+                
+    }
+
+    console_print(id, "%d commands created.", g_numCommands);
 }
 
 public printAliases(id) {
