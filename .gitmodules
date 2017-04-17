@@ -1,0 +1,6 @@
+[submodule "src/include/stocks"]
+	path = src/include/stocks
+	url = https://github.com/collinsmith/stocks
+[submodule "src/include/commands"]
+	path = src/include/commands
+	url = https://github.com/collinsmith/commands-inc
