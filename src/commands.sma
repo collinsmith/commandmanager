@@ -19,6 +19,7 @@
 #include "include/commands/command_t.inc"
 #include "include/commands/commands_const.inc"
 
+#include "include/stocks/simple_logger_stocks.inc"
 #include "include/stocks/exception_stocks.inc"
 #include "include/stocks/flag_stocks.inc"
 #include "include/stocks/param_stocks.inc"
@@ -84,7 +85,7 @@ static g_pCvar_Prefixes;
 
 public plugin_precache() {
 #if defined COMPILE_FOR_DEBUG
-  LoggerSetVerbosity(This_Logger, Severity_Lowest);
+  LoggerSetVerbosity(UnsetLevel);
 #endif
 }
 
@@ -157,32 +158,32 @@ createForwards() {
 }
 
 createOnBeforeCommand() {
-  LoggerLogDebug("Creating forward cmd_onBeforeCommand");
+  logd("Creating forward cmd_onBeforeCommand");
   g_fw[onBeforeCommand] = CreateMultiForward(
       "cmd_onBeforeCommand", ET_STOP,
       FP_CELL, FP_CELL, FP_CELL);
-  LoggerLogDebug("g_fw[onBeforeCommand] = %d", g_fw[onBeforeCommand]);
+  logd("g_fw[onBeforeCommand] = %d", g_fw[onBeforeCommand]);
 }
 
 createOnCommand() {
-  LoggerLogDebug("Creating forward cmd_onCommand");
+  logd("Creating forward cmd_onCommand");
   g_fw[onCommand] = CreateMultiForward(
       "cmd_onCommand", ET_IGNORE,
       FP_CELL, FP_CELL, FP_CELL);
-  LoggerLogDebug("g_fw[onCommand] = %d", g_fw[onCommand]);
+  logd("g_fw[onCommand] = %d", g_fw[onCommand]);
 }
 
 public onPrefixesAltered(pCvar, const oldValue[], const newValue[]) {
   assert pCvar == g_pCvar_Prefixes;
   if (g_prefixesMap == Invalid_Trie) {
     g_prefixesMap = TrieCreate();
-    LoggerLogDebug("Created g_prefixesMap = Trie: %d", g_prefixesMap);
+    logd("Created g_prefixesMap = Trie: %d", g_prefixesMap);
   } else {
     TrieClear(g_prefixesMap);
-    LoggerLogDebug("Cleared g_prefixesMap");
+    logd("Cleared g_prefixesMap");
   }
 
-  LoggerLogDebug("Updating command prefixes table to: \"%s\"", newValue);
+  logd("Updating command prefixes table to: \"%s\"", newValue);
 
   new i = 0;
   new ch;
@@ -195,11 +196,11 @@ public onPrefixesAltered(pCvar, const oldValue[], const newValue[]) {
   }
 
   if (g_fw[onPrefixesChanged] == INVALID_HANDLE) {
-      LoggerLogDebug("Creating forward cmd_onPrefixesChanged");
+      logd("Creating forward cmd_onPrefixesChanged");
       g_fw[onPrefixesChanged] = CreateMultiForward(
           "cmd_onPrefixesChanged", ET_IGNORE,
           FP_STRING, FP_STRING);
-      LoggerLogDebug("g_fw[onPrefixesChanged] = %d", g_fw[onPrefixesChanged]);
+      logd("g_fw[onPrefixesChanged] = %d", g_fw[onPrefixesChanged]);
   }
 
   ExecuteForward(g_fw[onPrefixesChanged], g_fw[fwReturn], oldValue, newValue);
@@ -250,7 +251,7 @@ checkCommandAndHandle(
   new Alias: aliasId;
   if (TrieGetCell(g_aliasesMap, alias, aliasId)) {
     loadAlias(aliasId);
-    LoggerLogDebug("Alias found: %d (\"%s\") is bound to command %d",
+    logd("Alias found: %d (\"%s\") is bound to command %d",
         aliasId, g_tempAlias[alias_String], g_tempAlias[alias_Command]);
     return tryExecutingCommand(
         prefix, g_tempAlias[alias_Command], id, teamCommand, args, len);
@@ -294,10 +295,10 @@ tryExecutingCommand(
   }
 
   new const flags = g_tempCommand[command_Flags];
-  if (!areFlagsSet(This_Logger, flags, FLAG_METHOD_SAY, FLAG_METHOD_SAY_TEAM)) {
+  if (!areFlagsSet(flags, FLAG_METHOD_SAY, FLAG_METHOD_SAY_TEAM)) {
     return PLUGIN_CONTINUE;
   } else {
-    switch (getXorFlag(This_Logger, flags, FLAG_METHOD_SAY, FLAG_METHOD_SAY_TEAM)) {
+    switch (getXorFlag(flags, FLAG_METHOD_SAY, FLAG_METHOD_SAY_TEAM)) {
       case FLAG_METHOD_SAY:
           if (isTeamCommand) {
             cmd_printColor(id, "%L", id, "CMD_SAYTEAM_ONLY");
@@ -311,11 +312,11 @@ tryExecutingCommand(
     }
   }
 
-  if (!areFlagsSet(This_Logger, flags, FLAG_STATE_ALIVE, FLAG_STATE_DEAD)) {
+  if (!areFlagsSet(flags, FLAG_STATE_ALIVE, FLAG_STATE_DEAD)) {
     return PLUGIN_CONTINUE;
   } else {
     new const bool: isAlive = bool:(is_user_alive(id));
-    switch (getXorFlag(This_Logger, flags, FLAG_STATE_ALIVE, FLAG_STATE_DEAD)) {
+    switch (getXorFlag(flags, FLAG_STATE_ALIVE, FLAG_STATE_DEAD)) {
       case FLAG_STATE_ALIVE:
           if (!isAlive) {
             cmd_printColor(id, "%L", id, "CMD_DEAD_ONLY");
@@ -344,7 +345,7 @@ tryExecutingCommand(
   if (g_fw[fwReturn] == PLUGIN_HANDLED) {
     if (isStringEmpty(g_szError)) {
       cmd_printColor(id, "%L", id, "CMD_BLOCKED");
-      LoggerLogWarn("A command was blocked without giving a reason why.");
+      logw("A command was blocked without giving a reason why.");
     } else {
       cmd_printColor(id, g_szError);
     }
@@ -427,7 +428,7 @@ stock aliasToIndex(Alias: alias) {
 stock bool: isAliasBound(Alias: alias) {
   loadAlias(alias);
   new const Command: command = g_tempAlias[alias_Command];
-  LoggerLogDebug("isAliasBound(\"%s\") == %s; g_tempAlias[alias_Command] = %d",
+  logd("isAliasBound(\"%s\") == %s; g_tempAlias[alias_Command] = %d",
       g_tempAlias[alias_String],
       isValidCommand(command) ? "true" : "false",
       command);
@@ -441,18 +442,18 @@ stock loadCommand(Command: command) {
 
   ArrayGetArray(g_commandsList, commandToIndex(command), g_tempCommand);
   g_Command = command;
-  LoggerLogDebug("Loaded command %d into g_tempCommand", g_Command);
+  logd("Loaded command %d into g_tempCommand", g_Command);
 }
 
 stock commitCommand(Command: command) {
   ArraySetArray(g_commandsList, commandToIndex(command), g_tempCommand);
   g_Command = command;
-  LoggerLogDebug("Committed command %d into g_tempCommand", g_Command);
+  logd("Committed command %d into g_tempCommand", g_Command);
 }
 
 stock invalidateCommand() {
   g_Command = Invalid_Command;
-  LoggerLogDebug("Invalidated g_tempCommand");
+  logd("Invalidated g_tempCommand");
 }
 
 stock loadAlias(Alias: alias) {
@@ -462,18 +463,18 @@ stock loadAlias(Alias: alias) {
 
   ArrayGetArray(g_aliasesList, aliasToIndex(alias), g_tempAlias);
   g_Alias = alias;
-  LoggerLogDebug("Loaded alias %d into g_tempAlias", g_Alias);
+  logd("Loaded alias %d into g_tempAlias", g_Alias);
 }
 
 stock commitAlias(Alias: alias) {
   ArraySetArray(g_aliasesList, aliasToIndex(alias), g_tempAlias);
   g_Alias = alias;
-  LoggerLogDebug("Committed alias %d into g_tempAlias", g_Alias);
+  logd("Committed alias %d into g_tempAlias", g_Alias);
 }
 
 stock invalidateAlias() {
   g_Alias = Invalid_Alias;
-  LoggerLogDebug("Invalidated g_tempAlias");
+  logd("Invalidated g_tempAlias");
 }
 
 stock outputArrayContents(Array: array){
@@ -484,13 +485,13 @@ stock outputArrayContents(Array: array){
   }
 
   list[max(0, len - 2)] = EOS;
-  LoggerLogDebug("Array: %d contents = { %s } (size=%d)", array, list, size);
+  logd("Array: %d contents = { %s } (size=%d)", array, list, size);
 }
 
 bindAlias(Alias: alias, Command: command) {
   assert isValidCommand(command);
   loadAlias(alias);
-  LoggerLogDebug("Binding alias %d (\"%s\") to command %d",
+  logd("Binding alias %d (\"%s\") to command %d",
       alias, g_tempAlias[alias_String], command);
   if (isAliasBound(alias)) {
     unbindAlias(alias);
@@ -505,7 +506,7 @@ bindAlias(Alias: alias, Command: command) {
 #if defined COMPILE_FOR_DEBUG
   outputArrayContents(aliasesList);
 #endif
-  LoggerLogDebug("Pushing alias %d (\"%s\") to Array: %d (size=%d)",
+  logd("Pushing alias %d (\"%s\") to Array: %d (size=%d)",
       alias, g_tempAlias[alias_String], aliasesList, ArraySize(aliasesList));
 
   ArrayPushCell(aliasesList, alias);
@@ -530,7 +531,7 @@ unbindAlias(Alias: alias) {
 #if defined COMPILE_FOR_DEBUG
   outputArrayContents(aliasesList);
 #endif
-  LoggerLogDebug("Removing alias %d (\"%s\") from Array: %d (size=%d)",
+  logd("Removing alias %d (\"%s\") from Array: %d (size=%d)",
       alias, g_tempAlias[alias_String], aliasesList, size);
 
   for (new i = 0; i < size; i++) {
@@ -547,29 +548,29 @@ unbindAlias(Alias: alias) {
 #endif
   assert foundAlias;
   if (ArraySize(aliasesList) == 0) {
-    LoggerLogWarn("Command %d no longer has any aliases bound to it (leak)!", command);
+    logw("Command %d no longer has any aliases bound to it (leak)!", command);
   }
 
   g_tempAlias[alias_Command] = Invalid_Command;
   commitAlias(alias);
-  LoggerLogDebug("Unbound alias %d (\"%s\") from command %d",
+  logd("Unbound alias %d (\"%s\") from command %d",
       alias, g_tempAlias[alias_String], command);
 }
 
 Alias: registerAlias(const Command: command, alias[]) {
   strtolower(alias);
   if (isStringEmpty(alias)) {
-    LoggerLogError("Cannot register an empty alias!");
+    loge("Cannot register an empty alias!");
     return Invalid_Alias;
   } else if (!isValidCommand(command)) {
-    LoggerLogError("Invalid command specified for alias \"%s\": %d", alias, command);
+    loge("Invalid command specified for alias \"%s\": %d", alias, command);
     return Invalid_Alias;
   }
 
   new Alias: aliasId;
   if (g_aliasesMap != Invalid_Trie && TrieGetCell(g_aliasesMap, alias, aliasId)) {
     loadAlias(aliasId);
-    LoggerLogDebug("Remapping existing alias %d (\"%s\"), from command %d to %d",
+    logd("Remapping existing alias %d (\"%s\"), from command %d to %d",
         aliasId, g_tempAlias[alias_String], g_tempAlias[alias_Command], command);
     bindAlias(aliasId, command);
     return aliasId;
@@ -578,12 +579,12 @@ Alias: registerAlias(const Command: command, alias[]) {
   if (g_aliasesList == Invalid_Array) {
     g_aliasesList = ArrayCreate(alias_t, INITIAL_ALIASES_SIZE);
     g_numAliases = 0;
-    LoggerLogDebug("Created g_aliasesList = Array: %d", g_aliasesList);
+    logd("Created g_aliasesList = Array: %d", g_aliasesList);
   }
 
   if (g_aliasesMap == Invalid_Trie) {
     g_aliasesMap = TrieCreate();
-    LoggerLogDebug("Created g_aliasesMap = Trie: %d", g_aliasesMap);
+    logd("Created g_aliasesMap = Trie: %d", g_aliasesMap);
   }
 
   copy(g_tempAlias[alias_String], alias_String_length, alias);
@@ -597,14 +598,14 @@ Alias: registerAlias(const Command: command, alias[]) {
   assert g_numAliases == TrieGetSize(g_aliasesMap);
 
   bindAlias(aliasId, command);
-  LoggerLogDebug("Registered alias %d (\"%s\") for command %d", aliasId, alias, command);
+  logd("Registered alias %d (\"%s\") for command %d", aliasId, alias, command);
   return aliasId;
 }
 
 stock checkFlags(const bits, const Command: command, const alias[]) {
   if (!isFlagSet(bits, FLAG_METHOD_SAY)
    && !isFlagSet(bits, FLAG_METHOD_SAY_TEAM)) {
-    LoggerLogWarn(
+    logw(
         "Command %d with alias \"%s\" does not have a flag specifying a say \
         method which activates it ('%c' for 'say' and/or '%c' for 'say_team')",
         command, alias, FLAG_METHOD_SAY_CH, FLAG_METHOD_SAY_TEAM_CH);
@@ -612,15 +613,15 @@ stock checkFlags(const bits, const Command: command, const alias[]) {
 
   if (!isFlagSet(bits, FLAG_STATE_ALIVE)
    && !isFlagSet(bits, FLAG_STATE_DEAD)) {
-    LoggerLogWarn(
+    logw(
         "Command %d with alias \"%s\" does not have a flag specifying a state \
         which a player must be in order to activate it ('%c' for alive and/or \
         '%c' for dead)",
         command, alias, FLAG_STATE_ALIVE_CH, FLAG_STATE_DEAD_CH);
   }
 
-  if (areFlagsNotSet(This_Logger, bits, FLAG_TEAM_UNASSIGNED, FLAG_TEAM_T, FLAG_TEAM_CT, FLAG_TEAM_SPECTATOR)) {
-    LoggerLogWarn(
+  if (areFlagsNotSet(bits, FLAG_TEAM_UNASSIGNED, FLAG_TEAM_T, FLAG_TEAM_CT, FLAG_TEAM_SPECTATOR)) {
+    logw(
         "Command %d with alias \"%s\" does not have a flag specifying a team \
         which a player must be on in order to activate it ('%c' for UNASSIGNED \
         and/or '%c' for TERRORIST and/or '%c' for CT and/or '%c' for SPECTATOR)",
@@ -629,7 +630,7 @@ stock checkFlags(const bits, const Command: command, const alias[]) {
 
   if (!isFlagSet(bits, FLAG_STATE_DEAD)
     && isFlagSet(bits, FLAG_TEAM_SPECTATOR)) {
-    LoggerLogWarn(
+    logw(
         "Command %d with alias \"%s\" specifies a player must be a spectator \
         ('%c'), however the dead flag ('%c') is not set",
         command, alias, FLAG_TEAM_SPECTATOR_CH, FLAG_STATE_DEAD_CH);
@@ -677,7 +678,7 @@ stock outputCommandAliases(const Command: command, dst[], const len){
 
   copyLen = max(0, copyLen - 2);
   dst[copyLen] = EOS;
-  LoggerLogDebug("Command %d aliases = { %s } (size=%d)", command, dst, size);
+  logd("Command %d aliases = { %s } (size=%d)", command, dst, size);
   return copyLen;
 }
 
@@ -704,13 +705,13 @@ public native_setError(plugin, numParams) {
   }
 
   if (!isOnBeforeCommand) {
-    ThrowIllegalStateException(This_Logger,
+    ThrowIllegalStateException(
         "Cannot set error message for command outside of cmd_onBeforeCommand forward");
     return;
   }
 
   get_string(1, g_szError, charsmax(g_szError));
-  LoggerLogDebug("Rejected reason set to \"%s\"", g_szError);
+  logd("Rejected reason set to \"%s\"", g_szError);
 }
 
 //native Command: cmd_registerCommand(
@@ -727,13 +728,13 @@ public Command: native_registerCommand(plugin, numParams) {
   if (g_commandsList == Invalid_Array) {
     g_commandsList = ArrayCreate(command_t, INITIAL_COMMANDS_SIZE);
     g_numCommands = 0;
-    LoggerLogDebug("Created g_commandsList = Array: %d", g_commandsList);
+    logd("Created g_commandsList = Array: %d", g_commandsList);
   }
 
   new handle[32];
   get_string(2, handle, charsmax(handle));
   if (isStringEmpty(handle)) {
-    ThrowIllegalArgumentException(This_Logger, "Cannot register a command with an empty handle!");
+    ThrowIllegalArgumentException("Cannot register a command with an empty handle!");
     return Invalid_Command;
   }
 
@@ -741,14 +742,14 @@ public Command: native_registerCommand(plugin, numParams) {
   if (funcId == -1) {
     new filename[32];
     get_plugin(plugin, filename, charsmax(filename));
-    ThrowIllegalArgumentException(This_Logger, "Function \"%s\" does not exist within \"%s\"!", handle, filename);
+    ThrowIllegalArgumentException("Function \"%s\" does not exist within \"%s\"!", handle, filename);
     return Invalid_Command;
   }
 
   new flags[32];
   get_string(3, flags, charsmax(flags));
   new const bits = readCustomFlags(flags);
-  LoggerLogDebug("Flags = %s %X", flags, bits);
+  logd("Flags = %s %X", flags, bits);
 
   new const adminFlags = get_param(5);
 
@@ -763,27 +764,27 @@ public Command: native_registerCommand(plugin, numParams) {
   g_numCommands++;
   assert g_numCommands == ArraySize(g_commandsList);
 
-  LoggerLogDebug("Created command %d[command_Aliases] = Array: %d",
+  logd("Created command %d[command_Aliases] = Array: %d",
       g_Command, g_tempCommand[command_Aliases]);
-  LoggerLogDebug("Registered command as Command: %d", g_Command);
+  logd("Registered command as Command: %d", g_Command);
 
   new alias[alias_String_length + 1];
   get_string(1, alias, charsmax(alias));
   if (registerAlias(g_Command, alias) == Invalid_Alias) {
-    LoggerLogWarn("Command %d registered without an alias!", g_Command);
+    logw("Command %d registered without an alias!", g_Command);
   }
 
   checkFlags(bits, g_Command, alias);
 
   if (g_fw[onCommandRegistered] == INVALID_HANDLE) {
-    LoggerLogDebug("Creating forward cmd_onCommandRegistered");
+    logd("Creating forward cmd_onCommandRegistered");
     g_fw[onCommandRegistered] = CreateMultiForward(
         "cmd_onCommandRegistered", ET_IGNORE,
         FP_CELL, FP_STRING, FP_CELL, FP_STRING, FP_CELL);
-    LoggerLogDebug("g_fw[onCommandRegistered] = %d", g_fw[onCommandRegistered]);
+    logd("g_fw[onCommandRegistered] = %d", g_fw[onCommandRegistered]);
   }
 
-  LoggerLogDebug("Calling cmd_onCommandRegistered");
+  logd("Calling cmd_onCommandRegistered");
   ExecuteForward(g_fw[onCommandRegistered], g_fw[fwReturn],
       g_Command, alias, bits, g_tempCommand[command_Desc], adminFlags);
   return g_Command;
@@ -821,7 +822,7 @@ public Command: native_findCommand(plugin, numParams) {
   assert isValidAlias(aliasId);
   loadAlias(aliasId);
   new const Command: command = g_tempAlias[alias_Command];
-  LoggerLogDebug("cmd_findCommand(\"%s\") == %d", alias, command);
+  logd("cmd_findCommand(\"%s\") == %d", alias, command);
   return command;
 }
 
