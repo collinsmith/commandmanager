@@ -3,7 +3,7 @@
  */
 
 #define VERSION_STRING "1.0.0"
-//#define COMPILE_FOR_DEBUG
+#define COMPILE_FOR_DEBUG
 
 #define MAX_NUM_PREFIXES 8
 #define INITIAL_COMMANDS_SIZE 8
@@ -85,7 +85,7 @@ static g_pCvar_Prefixes;
 
 public plugin_precache() {
 #if defined COMPILE_FOR_DEBUG
-  LoggerSetVerbosity(UnsetLevel);
+  SetLoggerVerbosity(UnsetLevel);
 #endif
 }
 
@@ -295,38 +295,30 @@ tryExecutingCommand(
   }
 
   new const flags = g_tempCommand[command_Flags];
-  if (!areFlagsSet(flags, FLAG_METHOD_SAY, FLAG_METHOD_SAY_TEAM)) {
+  new mask = flags&BITS_METHOD_MASK;
+  if (mask == 0) {
     return PLUGIN_CONTINUE;
-  } else {
-    switch (getXorFlag(flags, FLAG_METHOD_SAY, FLAG_METHOD_SAY_TEAM)) {
-      case FLAG_METHOD_SAY:
-          if (isTeamCommand) {
-            cmd_printColor(id, "%L", id, "CMD_SAYTEAM_ONLY");
-            return PLUGIN_HANDLED;
-          }
-      case FLAG_METHOD_SAY_TEAM:
-          if (!isTeamCommand) {
-            cmd_printColor(id, "%L", id, "CMD_SAYALL_ONLY");
-            return PLUGIN_HANDLED;
-          }
+  } else if (mask != BITS_METHOD_MASK) {
+    if ((mask&BITS_METHOD_SAY) == BITS_METHOD_SAY && isTeamCommand) {
+      cmd_printColor(id, "%L", id, "CMD_SAYALL_ONLY");
+      return PLUGIN_HANDLED;
+    } else if ((mask&BITS_METHOD_SAY_TEAM) == BITS_METHOD_SAY_TEAM && !isTeamCommand) {
+      cmd_printColor(id, "%L", id, "CMD_SAYTEAM_ONLY");
+      return PLUGIN_HANDLED;
     }
   }
 
-  if (!areFlagsSet(flags, FLAG_STATE_ALIVE, FLAG_STATE_DEAD)) {
+  mask = flags&BITS_STATE_MASK;
+  if (mask == 0) {
     return PLUGIN_CONTINUE;
-  } else {
+  } else if (mask != BITS_STATE_MASK) {
     new const bool: isAlive = bool:(is_user_alive(id));
-    switch (getXorFlag(flags, FLAG_STATE_ALIVE, FLAG_STATE_DEAD)) {
-      case FLAG_STATE_ALIVE:
-          if (!isAlive) {
-            cmd_printColor(id, "%L", id, "CMD_DEAD_ONLY");
-            return PLUGIN_HANDLED;
-          }
-      case FLAG_STATE_DEAD:
-          if (isAlive) {
-            cmd_printColor(id, "%L", id, "CMD_ALIVE_ONLY");
-            return PLUGIN_HANDLED;
-          }
+    if ((mask&BITS_STATE_ALIVE) == BITS_STATE_ALIVE && !isAlive) {
+      cmd_printColor(id, "%L", id, "CMD_ALIVE_ONLY");
+      return PLUGIN_HANDLED;
+    } else if ((mask&BITS_STATE_DEAD) == BITS_STATE_DEAD && isAlive) {
+      cmd_printColor(id, "%L", id, "CMD_DEAD_ONLY");
+      return PLUGIN_HANDLED;
     }
   }
 
