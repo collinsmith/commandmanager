@@ -349,7 +349,7 @@ tryExecutingCommand(
   argparse(args, 0, name, charsmax(name));
   //argbreak(args[1], name, charsmax(name), args, len);
 
-  new const player = cmd_target(id, name, CMDTARGET_ALLOW_SELF);
+  new const player = name[0] != EOS ? cmd_target(id, name, CMDTARGET_ALLOW_SELF) : 0;
   callfunc_begin_i(g_tempCommand[command_FuncID], g_tempCommand[command_PluginID]); {
     callfunc_push_int(id);
     callfunc_push_int(player);
